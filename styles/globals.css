@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* 회의 일시 input: 빈 값일 때 텍스트/달력 아이콘을 placeholder와 같은 회색으로 */
+.input-datetime::-webkit-datetime-edit {
+  color: inherit;
+}
+.input-datetime::-webkit-calendar-picker-indicator {
+  opacity: 0.55;
+  cursor: pointer;
+}

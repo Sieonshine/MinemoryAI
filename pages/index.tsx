@@ -175,7 +175,7 @@ export default function Home() {
     { id: "summary", label: <span className="whitespace-nowrap">{t.tabSummary}</span> },
   ];
 
-  /** 사이드바 본문 (데스크톱 in-flow / 모바일 drawer에서 공통) */
+  /** 사이드바 본문 (데스크톱 in-flow / 모바일 drawer에서 공통). 숨김 아이콘은 데스크톱 상단 토글만, 모바일은 drawer에서 닫기 버튼 */
   const sidebarContent = (
     <>
       <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4 dark:border-stone-700">
@@ -185,7 +185,7 @@ export default function Home() {
         <button
           type="button"
           onClick={() => setSidebarOpen(false)}
-          className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+          className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200 md:hidden"
           aria-label={t.sidebarClose}
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>

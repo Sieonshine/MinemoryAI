@@ -81,6 +81,29 @@ export default function Home() {
     }
   }, [langOpen]);
 
+  /** 모바일 drawer: Escape로 닫기 */
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === "Escape") setSidebarOpen(false);
+    }
+    if (sidebarOpen) {
+      document.addEventListener("keydown", handleEscape);
+      return () => document.removeEventListener("keydown", handleEscape);
+    }
+  }, [sidebarOpen]);
+
+  /** 모바일 drawer 열림 시 body 스크롤 잠금 */
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    if (!mq.matches) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [sidebarOpen]);
+
   const handleMeetingResult = (result: MeetingResult) => {
     setTranscript(result.transcript);
     setSummary(result.summary);
@@ -152,149 +175,171 @@ export default function Home() {
     { id: "summary", label: <span className="whitespace-nowrap">{t.tabSummary}</span> },
   ];
 
+  /** 사이드바 본문 (데스크톱 in-flow / 모바일 drawer에서 공통) */
+  const sidebarContent = (
+    <>
+      <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4 dark:border-stone-700">
+        <h1 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
+          {t.appTitle}
+        </h1>
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(false)}
+          className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+          aria-label={t.sidebarClose}
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+          </svg>
+        </button>
+      </div>
+      <div className="border-b border-stone-200 px-4 py-3 dark:border-stone-700">
+        <span className="text-xs font-medium uppercase tracking-wider text-stone-500 dark:text-stone-400">
+          {t.meetingList}
+        </span>
+      </div>
+      <nav className="flex-1 overflow-auto p-2">
+        <button
+          type="button"
+          onClick={handleNewMeeting}
+          className="mb-2 w-full rounded-md px-3 py-2 text-left text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+        >
+          + {t.newMeetingButton}
+        </button>
+        {meetings.length === 0 ? (
+          <div className="rounded-md px-3 py-2 text-sm text-stone-500 dark:text-stone-400 [word-break:keep-all]">
+            {t.noMeetings}
+          </div>
+        ) : (
+          <ul className="space-y-0.5">
+            {meetings.map((m) => (
+              <li key={m.id}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleSelectMeeting(m.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelectMeeting(m.id);
+                    }
+                  }}
+                  className={`flex items-center justify-between gap-1 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 ${
+                    selectedMeetingId === m.id
+                      ? "bg-stone-100 font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-100"
+                      : "text-stone-700 dark:text-stone-200"
+                  }`}
+                >
+                  <span className="min-w-0 truncate [word-break:break-word]">
+                    {m.title || t.newMeeting}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => handleDeleteMeeting(e, m.id)}
+                    className="shrink-0 rounded p-1 text-stone-400 transition-colors hover:bg-stone-200 hover:text-red-600 focus:outline-none dark:text-stone-500 dark:hover:bg-stone-700 dark:hover:text-red-400"
+                    aria-label={t.deleteMeeting}
+                    title={t.deleteMeeting}
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </nav>
+    </>
+  );
+
+  const sidebarToggleIcon = (
+    <>
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+        {sidebarOpen ? (
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+        ) : (
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+        )}
+      </svg>
+    </>
+  );
+
   return (
     <div
       className={`${geistSans.className} ${geistMono.variable} flex min-h-screen font-sans antialiased`}
     >
-      {/* 왼쪽: 사이드바 (열기/닫기) */}
-      {sidebarOpen ? (
-        <aside
-          className="flex min-w-0 flex-col border-r border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900"
-          style={{ flex: "1 1 0%", minWidth: "12rem" }}
+      {/* 데스크톱(md+): 좌측 사이드바 in-flow, expanded/collapsed, width만 변경 */}
+      <div
+        className="hidden md:flex md:shrink-0 md:flex-col md:border-r md:border-stone-200 md:bg-white md:transition-[width] md:duration-200 md:ease-out md:dark:border-stone-700 md:dark:bg-stone-900"
+        style={{ width: sidebarOpen ? "12rem" : "3rem" }}
+      >
+        <button
+          type="button"
+          onClick={() => setSidebarOpen((open) => !open)}
+          className="flex min-h-[3.5rem] items-center justify-center px-3 py-4 text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+          aria-label={sidebarOpen ? t.sidebarClose : t.sidebarOpen}
+          aria-expanded={sidebarOpen}
         >
-          <div className="flex items-center justify-between border-b border-stone-200 px-4 py-4 dark:border-stone-700">
-            <h1 className="text-lg font-semibold text-stone-800 dark:text-stone-100">
-              {t.appTitle}
-            </h1>
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
-              aria-label={t.sidebarClose}
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-                />
-              </svg>
-            </button>
+          {sidebarToggleIcon}
+        </button>
+        {sidebarOpen && (
+          <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
+            {sidebarContent}
           </div>
-          <div className="border-b border-stone-200 px-4 py-3 dark:border-stone-700">
-            <span className="text-xs font-medium uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              {t.meetingList}
-            </span>
-          </div>
-          <nav className="flex-1 overflow-auto p-2">
-            <button
-              type="button"
-              onClick={handleNewMeeting}
-              className="mb-2 w-full rounded-md px-3 py-2 text-left text-sm font-medium text-stone-600 transition-colors hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
-            >
-              + {t.newMeetingButton}
-            </button>
-            {meetings.length === 0 ? (
-              <div className="rounded-md px-3 py-2 text-sm text-stone-500 dark:text-stone-400 [word-break:keep-all]">
-                {t.noMeetings}
-              </div>
-            ) : (
-              <ul className="space-y-0.5">
-                {meetings.map((m) => (
-                  <li key={m.id}>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => handleSelectMeeting(m.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleSelectMeeting(m.id);
-                        }
-                      }}
-                      className={`flex items-center justify-between gap-1 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-stone-100 dark:hover:bg-stone-800 ${
-                        selectedMeetingId === m.id
-                          ? "bg-stone-100 font-medium text-stone-800 dark:bg-stone-800 dark:text-stone-100"
-                          : "text-stone-700 dark:text-stone-200"
-                      }`}
-                    >
-                      <span className="min-w-0 truncate [word-break:break-word]">
-                        {m.title || t.newMeeting}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteMeeting(e, m.id)}
-                        className="shrink-0 rounded p-1 text-stone-400 transition-colors hover:bg-stone-200 hover:text-red-600 focus:outline-none dark:text-stone-500 dark:hover:bg-stone-700 dark:hover:text-red-400"
-                        aria-label={t.deleteMeeting}
-                        title={t.deleteMeeting}
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </nav>
-        </aside>
-      ) : (
-        <div className="flex w-12 shrink-0 flex-col border-r border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900">
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(true)}
-            className="flex min-h-[3.5rem] items-center justify-center px-3 py-4 text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
-            aria-label={t.sidebarOpen}
+        )}
+      </div>
+
+      {/* 모바일(md 미만): drawer + backdrop (본문 레이아웃에 영향 없음) */}
+      {sidebarOpen && (
+        <>
+          <div
+            role="button"
+            tabIndex={-1}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            aria-hidden
+          />
+          <aside
+            className="fixed left-0 top-0 z-50 flex h-full w-72 max-w-[85vw] flex-col border-r border-stone-200 bg-white shadow-xl dark:border-stone-700 dark:bg-stone-900 dark:shadow-black/40 md:hidden"
+            aria-label={t.meetingList}
+            role="dialog"
+            aria-modal="true"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              aria-hidden
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 5l7 7-7 7M5 5l7 7-7 7"
-              />
-            </svg>
-          </button>
-        </div>
+            {sidebarContent}
+          </aside>
+        </>
       )}
 
-      {/* 가운데 + 메모: 좁은 화면에서는 메모가 Transcript 탭 위로 */}
-      <div
-        className="grid min-h-0 min-w-0 grid-cols-1 grid-rows-[auto_auto_1fr] gap-0 lg:grid-cols-[1fr_20rem] lg:grid-rows-[auto_1fr]"
-        style={{ flex: "4 1 0%" }}
-      >
+      {/* 메인: 데스크톱에서 min-w 유지, 본문은 max-w-3xl로 줄바꿈 안정화 */}
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 grid-rows-[auto_auto_1fr] gap-0 lg:grid-cols-[1fr_20rem] lg:grid-rows-[auto_1fr] md:min-w-0">
         {/* 1) 새 회의 상단 (제목, 회의 정보, 녹음) */}
         <div className="min-h-0 overflow-auto bg-stone-50 dark:bg-stone-950 lg:col-start-1 lg:row-start-1">
           <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 lg:py-8">
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
-                  {meetingTitle.trim() || t.newMeeting}
-                </h2>
-                <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
-                  {t.startRecordingHint}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
+            {/* 제목·아이콘 한 줄(아이콘 오른쪽 정렬), 안내문구는 다음 줄에서 전체 사용 */}
+            <div className="mb-6 flex flex-wrap items-start gap-x-2 gap-y-1 sm:gap-x-4">
+              <h2 className="text-2xl font-semibold text-stone-800 dark:text-stone-100">
+                {meetingTitle.trim() || t.newMeeting}
+              </h2>
+              <div className="min-w-0 flex-1 shrink" aria-hidden />
+              <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+                {/* 모바일: 메뉴 버튼으로 drawer 열기 */}
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200 sm:p-2 md:hidden"
+                  aria-label={t.sidebarOpen}
+                  aria-expanded={sidebarOpen}
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
                 <div className="relative" ref={langMenuRef}>
                   <button
                     type="button"
                     onClick={() => setLangOpen((o) => !o)}
-                    className="rounded p-2 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                    className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200 sm:p-2"
                     aria-label={t.selectLanguage}
                     aria-expanded={langOpen}
                   >
@@ -330,7 +375,7 @@ export default function Home() {
                   onClick={handleSaveMeeting}
                   title={saveStatus === "saved" ? t.saved : t.saveMeeting}
                   aria-label={saveStatus === "saved" ? t.saved : t.saveMeeting}
-                  className="flex items-center justify-center rounded p-2 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                  className="flex items-center justify-center rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200 sm:p-2"
                 >
                   <FontAwesomeIcon
                     icon={faFloppyDisk}
@@ -342,7 +387,7 @@ export default function Home() {
                   type="button"
                   onClick={() => setExportModalOpen(true)}
                   title={t.exportMarkdown}
-                  className="rounded p-2 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                  className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200 sm:p-2"
                   aria-label={t.exportMarkdown}
                 >
                   <FontAwesomeIcon
@@ -354,7 +399,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(true)}
-                  className="rounded p-2 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
+                  className="rounded p-1.5 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700 focus:outline-none dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200 sm:p-2"
                   aria-label={t.openSettings}
                 >
                   <svg
@@ -378,35 +423,47 @@ export default function Home() {
                   </svg>
                 </button>
               </div>
+              <div className="w-full">
+                <p className="text-sm text-stone-500 dark:text-stone-400">
+                  {t.startRecordingHint}
+                </p>
+              </div>
             </div>
 
-            <div className="mb-6 rounded-lg border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900">
-              <button
-                type="button"
-                onClick={() => setOverviewOpen((prev) => !prev)}
-                className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50 focus:outline-none dark:text-stone-200 dark:hover:bg-stone-800"
-                aria-expanded={overviewOpen}
-              >
-                <span>{t.meetingInfo}</span>
-                <svg
-                  className={`h-5 w-5 shrink-0 text-stone-500 transition-transform dark:text-stone-400 ${
-                    overviewOpen ? "rotate-180" : ""
-                  }`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  aria-hidden
+            {/* 회의 정보 입력: 펼쳐도 아래 콘텐츠(타이머·녹음·메모)가 밀리지 않도록 절대 위치 오버레이 */}
+            <div className="relative mb-6">
+              <div className="rounded-lg border border-stone-200 bg-white dark:border-stone-700 dark:bg-stone-900">
+                <button
+                  type="button"
+                  onClick={() => setOverviewOpen((prev) => !prev)}
+                  className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50 focus:outline-none dark:text-stone-200 dark:hover:bg-stone-800"
+                  aria-expanded={overviewOpen}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
+                  <span>{t.meetingInfo}</span>
+                  <svg
+                    className={`h-5 w-5 shrink-0 text-stone-500 transition-transform dark:text-stone-400 ${
+                      overviewOpen ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+              </div>
               {overviewOpen && (
-                <div className="border-t border-stone-200 p-4 dark:border-stone-700">
+                <div
+                  className="absolute left-0 right-0 top-full z-20 mt-1 max-h-[min(70vh,28rem)] overflow-y-auto rounded-lg border border-stone-200 bg-white p-4 shadow-lg dark:border-stone-700 dark:bg-stone-900 dark:shadow-black/20"
+                  role="region"
+                  aria-label={t.meetingInfo}
+                >
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="flex flex-col gap-1.5 sm:col-span-2">
                       <span className="text-sm font-medium text-stone-700 dark:text-stone-300">

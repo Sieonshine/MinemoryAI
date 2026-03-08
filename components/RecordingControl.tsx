@@ -143,7 +143,7 @@ export default function RecordingControl({
     const step = width / dataArray.length;
 
     ctx.clearRect(0, 0, width, height);
-    analyser.getByteTimeDomainData(dataArray);
+    analyser.getByteTimeDomainData(dataArray as Uint8Array<ArrayBuffer>);
 
     ctx.beginPath();
     ctx.lineWidth = 2;
